@@ -22,8 +22,7 @@ jobs:
       - name: Configurazione Node.js
         uses: actions/setup-node@v4
         with:
-          node-size: 20
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Installazione Dipendenze Web
