@@ -1,0 +1,10 @@
+{
+  "appId": "it.veneto.fitosanitario",
+  "appName": "Bollettini Veneto",
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}
