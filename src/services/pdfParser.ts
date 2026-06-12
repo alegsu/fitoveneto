@@ -17,25 +17,98 @@ export interface BulletinContent {
   categories: CategorySection[];
 }
 
+export interface CalendarTask {
+  id: string;
+  bulletinId: string;
+  bulletinTitle: string;
+  bulletinDate: string;
+  plant: string;
+  categoryType: 'frutta' | 'orto' | 'olivo';
+  disease: string;
+  task: string;
+  alertLevel: 'info' | 'warning' | 'danger';
+  deadline: string;
+  completed: boolean;
+}
+
+// Elenco delle colture/piante conosciute per guidare il sezionamento
+const KNOWN_PLANTS = [
+  // Frutta
+  "PESCO", "ALBICOCCO", "CILIEGIO", "MELO", "PERO", "ACTINIDIA", "NOCE",
+  // Orto
+  "PATATE", "POMODORO DA INDUSTRIA", "CIPOLLA", "BATATA (PATATA DOLCE)", "BATATA", "ZUCCA", "ASPARAGO", 
+  "CETRIOLO", "PEPERONE", "POMODORO", "FRAGOLA", "MELANZANA",
+  // Olivo
+  "OLIVO"
+];
+
+// Elenco delle avversità e sezioni note per evitare falsi positivi nei colons
+const KNOWN_HEADINGS = [
+  // Olivo
+  "FENOLOGIA",
+  "SITUAZIONE FISIOLOGICA DELLE PIANTE",
+  "SITUAZIONE FISIOLOGICA",
+  "SITUAZIONE FITOSANITARIA",
+  "Tignola dell’olivo (Prays oleae)",
+  "Tignola dell'olivo (Prays oleae)",
+  "Tignola dell'olivo",
+  "Tignola dell’olivo",
+  "Margaronia (Palpita unionalis)",
+  "Cotonello (Euphyllura olivina)",
+  "Cimice asiatica (Halyomorpha halys)",
+  "Cocciniglia mezzo grano di pepe (Saissetia oleae)",
+  "Mosca delle olive (Bactrocera oleae)",
+  "Mosca delle olive",
+  "Fumaggini",
+  "Malattie fungine",
+  
+  // Orto
+  "Stadio fenologico",
+  "Fase fenologica",
+  "Fisiopatie",
+  "Situazione malattie",
+  "Situazione fitofagi",
+  "Heliotis armigera e Autographa gamma",
+  "Tripide",
+  "Consigli colturali",
+  "Stato raccolta",
+  "Stemphylium",
+  "Pseudoperonospora e ragnetto",
+  "Ragnetto e tripide",
+  "Ragnetto rosso",
+  "Malattie e fitofagi",
+  
+  // Frutta
+  "Oidio",
+  "Monilia",
+  "Cydia molesta",
+  "Cydia pomonella",
+  "Maculatura bruna",
+  "Afide lanigero",
+  "Ticchiolatura",
+  "Eulia",
+  "PSA",
+  "Antracnosi",
+  "Batteriosi",
+  "Afidi"
+];
+
 // Determinazione del livello di allarme in base a parole chiave
 function determineAlertLevel(title: string, text: string): 'info' | 'warning' | 'danger' {
   const t = (title + " " + text).toLowerCase();
   
-  // Parole chiave ad alta gravità / interventi immediati
   const dangerKeywords = [
     'grave', 'gravi', 'danni diffusi', 'critici', 'urgente', 
     'emergenza', 'ingestibile', 'intervenire subito', 'trattare subito',
     'larve penetrazione', 'forte attacco', 'superata la soglia'
   ];
   
-  // Parole chiave di media gravità / attenzione
   const warningKeywords = [
     'in aumento', 'attenzione', 'monitorare', 'necessario', 'intervenire',
     'soglia di intervento', 'rischio', 'schiuse', 'trattamenti', 'volo degli adulti',
     'melata', 'possibili attacchi', 'sintomi', 'infezione'
   ];
   
-  // Parole di basso rischio / controllo
   const infoKeywords = [
     'sotto controllo', 'buon stato', 'assenti', 'bassa presenza', 
     'non necessari', 'riduce', 'regolare', 'linea con la media'
@@ -47,9 +120,8 @@ function determineAlertLevel(title: string, text: string): 'info' | 'warning' | 
   
   for (const kw of warningKeywords) {
     if (t.includes(kw)) {
-      // Verifica se c'è un'esclusione di rischio
       for (const infoKw of infoKeywords) {
-        if (t.includes(infoKw) && t.includes('rimane') || t.includes('rimangono')) {
+        if (t.includes(infoKw) && (t.includes('rimane') || t.includes('rimangono') || t.includes('sotto'))) {
           return 'info';
         }
       }
@@ -61,18 +133,15 @@ function determineAlertLevel(title: string, text: string): 'info' | 'warning' | 
 }
 
 export function parseBulletinText(text: string, type: 'frutta' | 'orto' | 'olivo', bulletinId: string): BulletinContent {
-  // Pulizia del testo e rimozione di intestazioni di pagina ripetitive
+  // 1. Pulizia intestazioni di pagina
   const cleanedText = text
     .replace(/--- Page \d+ ---/g, '')
     .replace(/Pag\.\s+\d+\s+di\s+\d+/gi, '')
     .replace(/SERVIZIO FITOSANITARIO REGIONE VENETO/g, '')
     .replace(/U\.O\. Fitosanitario/g, '')
-    .replace(/BOLLETTINI FITOSANITARI DIFESA INTEGRATA/g, '')
-    .replace(/\r\n/g, '\n')
-    .replace(/\n\s*\n/g, '\n');
+    .replace(/BOLLETTINI FITOSANITARI DIFESA INTEGRATA/g, '');
 
-  // Estrazione Titolo e Data
-  // Esempio: "Bollettino n. 15 del 11/06/2026" o "Bollettino n. 11 del 11/06/2026"
+  // 2. Estrazione Titolo e Data
   let title = `Bollettino ${type.toUpperCase()}`;
   let date = new Date().toLocaleDateString('it-IT');
   
@@ -91,178 +160,139 @@ export function parseBulletinText(text: string, type: 'frutta' | 'orto' | 'olivo
   };
 
   try {
-    if (type === 'olivo') {
-      // Per l'olivo c'è un'unica coltura principale (Olivo)
-      const olivoSection: CategorySection = {
-        name: 'OLIVO',
+    const lines = cleanedText.split('\n');
+    let currentPlantName = "";
+    const plantTexts: { [key: string]: string } = {};
+    let introText = "";
+
+    // A. Identifichiamo le sezioni delle piante e accumuliamo le loro linee
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
+
+      const upperLine = line.toUpperCase();
+      // Cerchiamo se la linea corrisponde a una coltura nota
+      const matchedPlant = KNOWN_PLANTS.find(p => 
+        upperLine === p || 
+        upperLine === `COLTURE ${p}` || 
+        upperLine === `${p} IN PIENO CAMPO` || 
+        upperLine === `COLTURE ${p} IN SERRA`
+      );
+
+      if (matchedPlant) {
+        currentPlantName = matchedPlant;
+        if (!plantTexts[currentPlantName]) {
+          plantTexts[currentPlantName] = "";
+        }
+      } else {
+        if (currentPlantName) {
+          plantTexts[currentPlantName] += " " + line;
+        } else {
+          // Se non è iniziata alcuna pianta, accumuliamo nell'introduzione
+          if (!line.toLowerCase().includes('in collaborazione') && !line.toLowerCase().includes('bollettino n.')) {
+            introText += " " + line;
+          }
+        }
+      }
+    }
+
+    result.intro = introText.replace(/\s+/g, ' ').trim();
+
+    // Se per l'olivo non abbiamo trovato un'intestazione esplicita, mettiamo tutto il testo
+    if (type === 'olivo' && !plantTexts["OLIVO"]) {
+      plantTexts["OLIVO"] = lines.join(" ");
+    }
+
+    // B. Parserizziamo ciascuna pianta unendo le righe per evitare spezzate
+    for (const [plantName, sectionText] of Object.entries(plantTexts)) {
+      const cleanSectionText = sectionText.replace(/\s+/g, ' ').trim();
+      if (!cleanSectionText) continue;
+
+      const category: CategorySection = {
+        name: plantName,
         details: []
       };
 
-      // Troviamo i blocchi principali
-      // Fenologia, Situazione Fisiologica, Situazione Fitosanitaria
-      const lines = cleanedText.split('\n');
-      let currentSection = '';
-      let currentContent = '';
-      
-      const detailsMap: { [key: string]: string } = {};
+      const headingPositions: { start: number; end: number; title: string }[] = [];
 
-      for (let line of lines) {
-        line = line.trim();
-        if (!line) continue;
-
-        // Se la linea è intestazione principale
-        if (line === 'FENOLOGIA' || line === 'SITUAZIONE FISIOLOGICA DELLE PIANTE' || line === 'SITUAZIONE FITOSANITARIA') {
-          if (currentSection) {
-            detailsMap[currentSection] = currentContent.trim();
-          }
-          currentSection = line;
-          currentContent = '';
-          continue;
-        }
-
-        // Se siamo in SITUAZIONE FITOSANITARIA, proviamo a dividere per malattie specifiche
-        if (currentSection === 'SITUAZIONE FITOSANITARIA') {
-          // Es: "Tignola dell’olivo (Prays oleae): la generazione..."
-          const diseaseMatch = line.match(/^([^:]+)\s*:\s*(.*)$/);
-          if (diseaseMatch) {
-            const diseaseName = diseaseMatch[1].trim();
-            // Evitiamo che prenda intere frasi come titolo
-            if (diseaseName.length < 50) {
-              detailsMap[diseaseName] = diseaseMatch[2].trim();
-              continue;
-            }
-          }
-        }
-
-        if (currentSection) {
-          currentContent += ' ' + line;
-        } else {
-          // Introduzione iniziale prima di FENOLOGIA
-          if (!line.toLowerCase().includes('in collaborazione') && !line.toLowerCase().includes('olivo')) {
-            result.intro += (result.intro ? ' ' : '') + line;
-          }
+      // Cerchiamo le intestazioni note (es. "Tignola dell'olivo (Prays oleae):")
+      for (const heading of KNOWN_HEADINGS) {
+        const regex = new RegExp(`\\b${escapeRegExp(heading)}\\s*:`, 'gi');
+        let match;
+        while ((match = regex.exec(cleanSectionText)) !== null) {
+          headingPositions.push({
+            start: match.index,
+            end: regex.lastIndex,
+            title: heading
+          });
         }
       }
-      
-      // Salva l'ultimo blocco
-      if (currentSection && currentContent) {
-        detailsMap[currentSection] = currentContent.trim();
-      }
 
-      // Convertiamo i blocchi in DetailItem
-      for (const [title, content] of Object.entries(detailsMap)) {
-        if (title === 'SITUAZIONE FITOSANITARIA') continue; // Già diviso
+      // Cerchiamo intestazioni generiche corte (es: "Oidio: " o "Dorifora: ")
+      const fallbackRegex = /(?:^|\s)([A-Z][a-zA-Z0-9’'.-]{2,25})\s*:/g;
+      let fbMatch;
+      while ((fbMatch = fallbackRegex.exec(cleanSectionText)) !== null) {
+        const title = fbMatch[1].trim();
+        const matchStart = fbMatch.index + fbMatch[0].indexOf(title);
+        const matchEnd = fbMatch.index + fbMatch[0].length;
         
-        olivoSection.details.push({
-          title,
-          content,
-          alertLevel: determineAlertLevel(title, content)
+        // Evitiamo sovrapposizioni
+        const isOverlapping = headingPositions.some(pos => 
+          (matchStart >= pos.start && matchStart < pos.end) ||
+          (matchEnd > pos.start && matchEnd <= pos.end)
+        );
+
+        if (!isOverlapping) {
+          headingPositions.push({
+            start: matchStart,
+            end: matchEnd,
+            title: title
+          });
+        }
+      }
+
+      // Ordiniamo le posizioni trovate
+      headingPositions.sort((a, b) => a.start - b.start);
+
+      // Estraiamo il contenuto per ogni intestazione
+      if (headingPositions.length === 0) {
+        category.details.push({
+          title: "Info Generale",
+          content: cleanSectionText,
+          alertLevel: 'info'
         });
-      }
-
-      if (olivoSection.details.length > 0) {
-        result.categories.push(olivoSection);
-      }
-
-    } else {
-      // Frutta o Orto
-      // Identifichiamo le colture principali (righe interamente in MAIUSCOLO)
-      const lines = cleanedText.split('\n');
-      let currentCategory: CategorySection | null = null;
-      let currentDetail: DetailItem | null = null;
-      let introLines: string[] = [];
-
-      // Lista di intestazioni da ignorare come piante
-      const ignoreHeaders = [
-        'COLTURE FRUTTICOLE', 'COLTURE ORTICOLE', 'ORTICOLE IN PIENO CAMPO', 
-        'COLTURE ORTICOLE IN SERRA', 'SERVIZIO FITOSANITARIO', 'DIFESA INTEGRATA'
-      ];
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-
-        // Verifica se la riga è un nome di coltura (tutta maiuscola, non troppo lunga e non da ignorare)
-        const isUppercase = line === line.toUpperCase() && /[A-Z]/.test(line);
-        const isPlantHeader = isUppercase && line.length > 2 && line.length < 35 && !ignoreHeaders.some(h => line.includes(h)) && !line.includes('BOLLETTINO');
-
-        if (isPlantHeader) {
-          // Salva la coltura precedente
-          if (currentCategory) {
-            if (currentDetail) {
-              currentCategory.details.push(currentDetail);
-              currentDetail = null;
-            }
-            result.categories.push(currentCategory);
-          }
-          currentCategory = {
-            name: line,
-            details: []
-          };
-          continue;
-        }
-
-        if (currentCategory) {
-          // Siamo dentro una coltura. Cerchiamo pattern "Patogeno: testo"
-          // Esempio: "Oidio: continuare la difesa..." o "Fase fenologica: ..."
-          const detailMatch = line.match(/^([^:]+)\s*:\s*(.*)$/);
+      } else {
+        for (let i = 0; i < headingPositions.length; i++) {
+          const current = headingPositions[i];
+          const next = headingPositions[i + 1];
+          const contentStart = current.end;
+          const contentEnd = next ? next.start : cleanSectionText.length;
           
-          if (detailMatch && detailMatch[1].trim().length < 40 && !detailMatch[1].includes('http') && !/^[0-9]/.test(detailMatch[1])) {
-            if (currentDetail) {
-              currentCategory.details.push(currentDetail);
-            }
-            currentDetail = {
-              title: detailMatch[1].trim(),
-              content: detailMatch[2].trim(),
-              alertLevel: 'info' // Iniziale
-            };
-          } else {
-            // Continua il testo del dettaglio corrente o aggiunge alla coltura se non c'è dettaglio
-            if (currentDetail) {
-              currentDetail.content += ' ' + line;
-            } else {
-              // Testo libero nella sezione coltura (es. Stadio fenologico senza due punti in riga successiva)
-              currentDetail = {
-                title: 'Info Generale',
-                content: line,
-                alertLevel: 'info'
-              };
-            }
-          }
-        } else {
-          // Introduzione generale del bollettino
-          if (!line.toLowerCase().includes('bollettino n.') && !line.toLowerCase().includes('colture')) {
-            introLines.push(line);
+          let content = cleanSectionText.substring(contentStart, contentEnd).trim();
+          content = content.replace(/\s+/g, ' ').trim();
+
+          // Ignora elementi senza reale contenuto o ripetitivi
+          if (content.length > 3) {
+            category.details.push({
+              title: current.title,
+              content: content,
+              alertLevel: determineAlertLevel(current.title, content)
+            });
           }
         }
       }
 
-      // Salva l'ultimo dettaglio e categoria
-      if (currentCategory) {
-        if (currentDetail) {
-          currentCategory.details.push(currentDetail);
-        }
-        result.categories.push(currentCategory);
+      if (category.details.length > 0) {
+        result.categories.push(category);
       }
-
-      result.intro = introLines.join(' ');
     }
-
-    // Post-processing: pulizia, alert level finale
-    result.categories.forEach(cat => {
-      cat.details.forEach(det => {
-        det.content = det.content.replace(/\s+/g, ' ').trim();
-        det.alertLevel = determineAlertLevel(det.title, det.content);
-      });
-    });
 
   } catch (error) {
     console.error("Errore durante il parsing del bollettino:", error);
   }
 
-  // Fallback: se il parser non ha estratto nulla, creiamo un'unica categoria con tutto il testo grezzo
+  // Fallback
   if (result.categories.length === 0) {
-    result.intro = "Lettura del bollettino in modalità testo integrale.";
     result.categories.push({
       name: "TESTO INTEGRALE",
       details: [
@@ -276,4 +306,79 @@ export function parseBulletinText(text: string, type: 'frutta' | 'orto' | 'olivo
   }
 
   return result;
+}
+
+function escapeRegExp(string: string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Estrazione compiti per il Calendario Cose da Fare
+export function extractCalendarTasks(bulletin: BulletinContent, categoryType: 'frutta' | 'orto' | 'olivo'): CalendarTask[] {
+  const tasks: CalendarTask[] = [];
+  
+  // Parole chiave che indicano azioni da compiere
+  const actionKeywords = [
+    'intervenire', 'trattare', 'trattamento', 'trattamenti', 'effettuare', 
+    'eseguire', 'applicare', 'eliminare', 'monitorare', 'asportare', 
+    'arieggiare', 'ridurre', 'consiglia', 'raccomanda', 'posizionare',
+    'lanci', 'lavaggi', 'zappatura', 'estirpatura', 'controllo', 'verificare'
+  ];
+
+  bulletin.categories.forEach(cat => {
+    cat.details.forEach(det => {
+      // Evita compiti per le sezioni puramente descrittive come la fenologia se non contengono azioni
+      if (det.title.toLowerCase().includes('fenologia') || det.title.toLowerCase().includes('fase fenologica')) {
+        return;
+      }
+
+      // Dividiamo in frasi
+      const sentences = det.content.split(/(?<=[.!?])\s+/);
+      
+      sentences.forEach((sentence, idx) => {
+        const cleanSentence = sentence.trim();
+        if (!cleanSentence || cleanSentence.length < 15) return;
+
+        const containsAction = actionKeywords.some(kw => 
+          cleanSentence.toLowerCase().includes(kw)
+        );
+
+        if (containsAction) {
+          // Ricerca scadenza
+          let deadline = "In questo periodo";
+          const lowerText = cleanSentence.toLowerCase();
+          
+          const daysMatch = cleanSentence.match(/entro\s+(?:i\s+prossimi\s+)?(\d+\s+giorni)/i);
+          if (daysMatch) {
+            deadline = `Entro ${daysMatch[1]}`;
+          } else if (lowerText.includes('prima di iniziare la raccolta') || lowerText.includes('prima della raccolta')) {
+            deadline = "Prima della raccolta";
+          } else if (lowerText.includes('dalla prossima settimana')) {
+            deadline = "Dalla prossima settimana";
+          } else if (lowerText.includes('subito') || lowerText.includes('immediato') || lowerText.includes('urgente')) {
+            deadline = "Immediato";
+          } else if (lowerText.includes('sera') || lowerText.includes('mattino')) {
+            deadline = "La sera o mattino presto";
+          } else if (lowerText.includes('prima delle piogge') || lowerText.includes('prima degli eventi piovosi')) {
+            deadline = "Prima delle piogge";
+          }
+
+          tasks.push({
+            id: `${bulletin.bulletinId}_${cat.name}_${det.title.replace(/\s+/g, '')}_${idx}`,
+            bulletinId: bulletin.bulletinId,
+            bulletinTitle: bulletin.title,
+            bulletinDate: bulletin.date,
+            plant: cat.name,
+            categoryType: categoryType,
+            disease: det.title,
+            task: cleanSentence,
+            alertLevel: det.alertLevel,
+            deadline: deadline,
+            completed: false
+          });
+        }
+      });
+    });
+  });
+
+  return tasks;
 }
