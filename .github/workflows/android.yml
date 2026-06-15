@@ -43,11 +43,11 @@ jobs:
       - name: Sincronizzazione Capacitor
         run: npx cap sync android
 
-      - name: Compilazione APK con Gradle
+      - name: Compilazione APK e AAB con Gradle
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug bundleRelease
 
       - name: Caricamento APK come Artefatto del Run
         uses: actions/upload-artifact@v4
@@ -55,7 +55,13 @@ jobs:
           name: FitoVeneto-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
-      - name: Creazione Release su GitHub ed Upload APK
+      - name: Caricamento AAB come Artefatto del Run
+        uses: actions/upload-artifact@v4
+        with:
+          name: FitoVeneto-AAB
+          path: android/app/build/outputs/bundle/release/app-release-unsigned.aab
+
+      - name: Creazione Release su GitHub ed Upload APK e AAB
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -63,6 +69,7 @@ jobs:
           echo "Creazione release $TAG_NAME..."
           gh release create "$TAG_NAME" \
             android/app/build/outputs/apk/debug/app-debug.apk \
+            android/app/build/outputs/bundle/release/app-release-unsigned.aab \
             --title "FitoVeneto App - Versione $TAG_NAME" \
-            --notes "Scarica e installa l'APK sul tuo dispositivo Android per leggere i bollettini fitosanitari della Regione Veneto con caratteri grandi e sintesi vocale." \
+            --notes "Scarica l'APK per il test diretto o il file .aab (Bundle) per il caricamento sul Google Play Store." \
             --target "${{ github.ref_name }}"

@@ -28,6 +28,12 @@ export default function App() {
     return cached ? parseFloat(cached) : 1.25; // Default 125% per anziani
   });
 
+  // Coltivazioni seguite (Personalizzazione)
+  const [followedCrops, setFollowedCrops] = useState<{ frutta: boolean; orto: boolean; olivo: boolean }>(() => {
+    const cached = localStorage.getItem('followed_crops');
+    return cached ? JSON.parse(cached) : { frutta: true, orto: true, olivo: true };
+  });
+
   // Navigazione e Dati
   const [screen, setScreen] = useState<Screen>('home');
   const [selectedType, setSelectedType] = useState<'frutta' | 'orto' | 'olivo' | null>(null);
@@ -56,6 +62,14 @@ export default function App() {
     document.documentElement.style.setProperty('--text-zoom', zoom.toString());
     localStorage.setItem('app_zoom', zoom.toString());
   }, [zoom]);
+
+  // Salva preferenze coltivazioni seguite e rigenera scadenziario
+  useEffect(() => {
+    localStorage.setItem('followed_crops', JSON.stringify(followedCrops));
+    if (links.length > 0) {
+      buildCalendar(links);
+    }
+  }, [followedCrops]);
 
   // Caricamento iniziale dei link dal sito o dalla cache
   useEffect(() => {
@@ -89,29 +103,28 @@ export default function App() {
     }
   };
 
-  // Costruisce lo scadenziario dagli ultimi 3 bollettini di ogni categoria (totale 9 bollettini max)
+  // Costruisce lo scadenziario dagli ultimi 3 bollettini per ciascuna categoria seguita
   const buildCalendar = async (bulletinLinks: BulletinLink[]) => {
     setLoadingCalendar(true);
     const tasksAccumulator: CalendarTask[] = [];
 
-    // Raggruppiamo i link per tipo e prendiamo gli ultimi 3 per tipo
     const types: ('frutta' | 'orto' | 'olivo')[] = ['frutta', 'orto', 'olivo'];
     
     for (const t of types) {
+      // Se non seguiamo questa coltura, saltiamo l'estrazione per questa categoria
+      if (!followedCrops[t]) continue;
+
       const typeLinks = bulletinLinks.filter(l => l.type === t).slice(0, 3);
       
       for (const link of typeLinks) {
         const cacheKey = `bulletin_cache_${link.id}`;
         let parsedBulletin: BulletinContent | null = null;
         
-        // Controlla se il bollettino è in cache
         const cachedData = localStorage.getItem(cacheKey);
         if (cachedData) {
           parsedBulletin = JSON.parse(cachedData);
         } else {
-          // Se non è in cache ed è il più recente di questa categoria (indice 0), 
-          // proviamo a scaricarlo in background per non avere il calendario vuoto all'avvio.
-          // Altrimenti saltiamo per evitare 9 richieste HTTP sincrone bloccanti.
+          // Scarica l'ultimo se manca
           if (typeLinks.indexOf(link) === 0) {
             try {
               const rawText = await fetchBulletinText(link);
@@ -126,7 +139,6 @@ export default function App() {
         if (parsedBulletin) {
           const extracted = extractCalendarTasks(parsedBulletin, link.type);
           extracted.forEach(task => {
-            // Controlla se è stato completato dall'utente
             task.completed = completedTaskIds.has(task.id);
             tasksAccumulator.push(task);
           });
@@ -138,13 +150,15 @@ export default function App() {
     setLoadingCalendar(false);
   };
 
-  // Forza il download e aggiornamento di tutti i 9 bollettini per il calendario
+  // Aggiornamento forzato
   const forceUpdateCalendar = async () => {
     setLoadingCalendar(true);
     const tasksAccumulator: CalendarTask[] = [];
     const types: ('frutta' | 'orto' | 'olivo')[] = ['frutta', 'orto', 'olivo'];
     
     for (const t of types) {
+      if (!followedCrops[t]) continue;
+
       const typeLinks = links.filter(l => l.type === t).slice(0, 3);
       
       for (const link of typeLinks) {
@@ -152,12 +166,11 @@ export default function App() {
         let parsedBulletin: BulletinContent | null = null;
         
         try {
-          // fetch e parse reale
           const rawText = await fetchBulletinText(link);
           parsedBulletin = parseBulletinText(rawText, link.type, link.id);
           localStorage.setItem(cacheKey, JSON.stringify(parsedBulletin));
         } catch (e) {
-          console.warn(`Force fetch failed for ${link.id}, using cache if available:`, e);
+          console.warn(`Force fetch failed for ${link.id}:`, e);
           const cachedData = localStorage.getItem(cacheKey);
           if (cachedData) {
             parsedBulletin = JSON.parse(cachedData);
@@ -204,8 +217,6 @@ export default function App() {
       const parsed = parseBulletinText(rawText, link.type, link.id);
       setBulletin(parsed);
       localStorage.setItem(cacheKey, JSON.stringify(parsed));
-      
-      // Rigeneriamo il calendario per includere questo bollettino appena scaricato
       buildCalendar(links);
     } catch (err) {
       console.error(err);
@@ -215,7 +226,6 @@ export default function App() {
     }
   };
 
-  // Segna come completato o da fare
   const toggleTaskCompleted = (taskId: string) => {
     const newSet = new Set(completedTaskIds);
     if (newSet.has(taskId)) {
@@ -226,7 +236,6 @@ export default function App() {
     setCompletedTaskIds(newSet);
     localStorage.setItem('completed_tasks', JSON.stringify(Array.from(newSet)));
 
-    // Aggiorna lo stato dei compiti locali
     setCalendarTasks(prevTasks => 
       prevTasks.map(task => 
         task.id === taskId ? { ...task, completed: newSet.has(taskId) } : task
@@ -234,10 +243,23 @@ export default function App() {
     );
   };
 
+  // Modifica le preferenze per le colture seguite (minimo 1 attiva)
+  const toggleCropFollowed = (crop: 'frutta' | 'orto' | 'olivo') => {
+    const activeCount = Object.values(followedCrops).filter(Boolean).length;
+    if (activeCount === 1 && followedCrops[crop]) {
+      alert("Devi seguire almeno un tipo di coltivazione!");
+      return;
+    }
+    setFollowedCrops(prev => ({
+      ...prev,
+      [crop]: !prev[crop]
+    }));
+  };
+
   // Filtra i link per tipologia
   const filteredLinks = links.filter(l => l.type === selectedType);
 
-  // Filtra il contenuto del bollettino in base alla barra di ricerca (per nome pianta o malattia)
+  // Filtra il contenuto del bollettino
   const getFilteredCategories = (): CategorySection[] => {
     if (!bulletin) return [];
     if (!searchQuery.trim()) return bulletin.categories;
@@ -252,28 +274,30 @@ export default function App() {
     });
   };
 
-  // Filtra i compiti del calendario
+  // Filtra i compiti del calendario (solo se seguiamo quella coltura)
   const getFilteredCalendarTasks = (): CalendarTask[] => {
     let filtered = calendarTasks;
 
-    // 1. Filtra per tipologia
+    // Filtra per colture seguite
+    filtered = filtered.filter(t => followedCrops[t.categoryType]);
+
+    // Filtra per tipologia attiva nel filtro calendario
     if (calendarFilter !== 'tutte') {
       filtered = filtered.filter(t => t.categoryType === calendarFilter);
     }
 
-    // 2. Filtra per stato (Completati vs Da Fare)
+    // Filtra per stato (Completati vs Da Fare)
     if (calendarStatusFilter === 'da_fare') {
       filtered = filtered.filter(t => !t.completed);
     } else {
       filtered = filtered.filter(t => t.completed);
     }
 
-    // Ordina per urgenza (danger prima, poi warning, poi info)
     const priority = { danger: 1, warning: 2, info: 3 };
     return filtered.sort((a, b) => priority[a.alertLevel] - priority[b.alertLevel]);
   };
 
-  // Renderizza l'icona e colore dell'allarme
+  // Renderizza allarmi ed icone
   const renderAlertIcon = (level: 'info' | 'warning' | 'danger') => {
     switch(level) {
       case 'danger':
@@ -300,60 +324,27 @@ export default function App() {
 
   return (
     <>
-      {/* 1. BARRA DI ACCESSIBILITÀ (Persistente in alto) */}
-      <header className="access-bar">
-        <div className="zoom-controls">
-          <span className="zoom-label">Caratteri:</span>
-          <button 
-            className={`btn-icon-only ${zoom === 1.0 ? 'active' : ''}`}
-            onClick={() => setZoom(1.0)}
-            title="Caratteri Normali"
-          >
-            A
-          </button>
-          <button 
-            className={`btn-icon-only ${zoom === 1.25 ? 'active' : ''}`}
-            onClick={() => setZoom(1.25)}
-            title="Caratteri Grandi"
-            style={{ fontSize: '1.25rem', fontWeight: 'bold' }}
-          >
-            A+
-          </button>
-          <button 
-            className={`btn-icon-only ${zoom === 1.6 ? 'active' : ''}`}
-            onClick={() => setZoom(1.6)}
-            title="Caratteri Molto Grandi"
-            style={{ fontSize: '1.5rem', fontWeight: 'bold' }}
-          >
-            A++
-          </button>
-          <button 
-            className={`btn-icon-only ${zoom === 2.0 ? 'active' : ''}`}
-            onClick={() => setZoom(2.0)}
-            title="Caratteri Massimi"
-            style={{ fontSize: '1.75rem', fontWeight: 'bold' }}
-          >
-            A+++
-          </button>
-        </div>
-        
+      {/* 1. BARRA DI INTESTAZIONE (Semplificata, senza icone di ridimensionamento) */}
+      <header className="access-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '60px' }}>
+        <h2 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--brand-primary)', fontWeight: 'bold' }}>FitoVeneto 🌾</h2>
         <button 
           className="btn-icon-only" 
           onClick={() => setScreen('settings')}
-          title="Impostazioni"
+          title="Opzioni"
+          style={{ width: '48px', height: '48px', minWidth: '48px', minHeight: '48px' }}
         >
-          <Settings size={28} />
+          <Settings size={24} />
         </button>
       </header>
 
-      {/* Banner modalità offline se non riusciamo a connetterci */}
+      {/* Banner offline */}
       {offlineLinks && (
         <div className="offline-banner">
           ⚠️ Modalità Offline: Dati caricati dalla memoria del telefono
         </div>
       )}
 
-      {/* Spazio flessibile per scorrere i contenuti lasciando spazio per la bottom bar */}
+      {/* Area Contenuti */}
       <main style={{ flex: 1, paddingBottom: '90px', display: 'flex', flexDirection: 'column' }}>
 
         {/* 2. SCHERMATA: HOME */}
@@ -369,29 +360,37 @@ export default function App() {
             <h2 style={{ marginBottom: '20px', textAlign: 'center' }}>Cosa vuoi controllare oggi?</h2>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <button className="btn-large btn-frutta" onClick={() => handleSelectType('frutta')}>
-                <span style={{ fontSize: '2.5rem' }}>🍎</span>
-                <div>
-                  <h3 style={{ margin: 0 }}>FRUTTETO</h3>
-                  <small style={{ color: 'var(--text-secondary)' }}>Melo, Pero, Pesco, Ciliegio, ecc.</small>
-                </div>
-              </button>
+              
+              {/* Mostra solo i pulsanti per le colture seguite */}
+              {followedCrops.frutta && (
+                <button className="btn-large btn-frutta" onClick={() => handleSelectType('frutta')}>
+                  <span style={{ fontSize: '2.5rem' }}>🍎</span>
+                  <div>
+                    <h3 style={{ margin: 0 }}>FRUTTETO</h3>
+                    <small style={{ color: 'var(--text-secondary)' }}>Melo, Pero, Pesco, Ciliegio, ecc.</small>
+                  </div>
+                </button>
+              )}
 
-              <button className="btn-large btn-orto" onClick={() => handleSelectType('orto')}>
-                <span style={{ fontSize: '2.5rem' }}>🥬</span>
-                <div>
-                  <h3 style={{ margin: 0 }}>ORTO</h3>
-                  <small style={{ color: 'var(--text-secondary)' }}>Patate, Pomodoro, Cipolla, ecc.</small>
-                </div>
-              </button>
+              {followedCrops.orto && (
+                <button className="btn-large btn-orto" onClick={() => handleSelectType('orto')}>
+                  <span style={{ fontSize: '2.5rem' }}>🥬</span>
+                  <div>
+                    <h3 style={{ margin: 0 }}>ORTO</h3>
+                    <small style={{ color: 'var(--text-secondary)' }}>Patate, Pomodoro, Cipolla, ecc.</small>
+                  </div>
+                </button>
+              )}
 
-              <button className="btn-large btn-olivo" onClick={() => handleSelectType('olivo')}>
-                <span style={{ fontSize: '2.5rem' }}>🫒</span>
-                <div>
-                  <h3 style={{ margin: 0 }}>OLIVETO</h3>
-                  <small style={{ color: 'var(--text-secondary)' }}>Olivo e difesa delle olive</small>
-                </div>
-              </button>
+              {followedCrops.olivo && (
+                <button className="btn-large btn-olivo" onClick={() => handleSelectType('olivo')}>
+                  <span style={{ fontSize: '2.5rem' }}>🫒</span>
+                  <div>
+                    <h3 style={{ margin: 0 }}>OLIVETO</h3>
+                    <small style={{ color: 'var(--text-secondary)' }}>Olivo e difesa delle olive</small>
+                  </div>
+                </button>
+              )}
 
               <button 
                 className="btn-large btn-primary" 
@@ -401,7 +400,7 @@ export default function App() {
                 <Calendar size={36} />
                 <div>
                   <h3 style={{ margin: 0, color: '#fff' }}>COSE DA FARE</h3>
-                  <small style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Scadenziario degli ultimi 3 bollettini</small>
+                  <small style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Scadenziario compiti da fare</small>
                 </div>
               </button>
             </div>
@@ -412,7 +411,7 @@ export default function App() {
               <p style={{ fontSize: '1.05rem', color: 'var(--text-secondary)' }}>
                 1. Scegli il tuo tipo di coltivazione.<br />
                 2. Tocca l'ultimo bollettino per leggerlo.<br />
-                3. Vai su **"Cose da Fare"** 📅 in basso per vedere l'agenda dei trattamenti estratti.
+                3. Vai su **"Cose da Fare"** 📅 per vedere la tua agenda di compiti ed interventi.
               </p>
             </div>
           </div>
@@ -493,7 +492,6 @@ export default function App() {
               </div>
             ) : bulletin ? (
               <div>
-                {/* Intestazione Bollettino */}
                 <div style={{ marginBottom: '20px', borderBottom: '2px solid var(--border-color)', paddingBottom: '16px' }}>
                   <span className="badge info" style={{ marginBottom: '8px' }}>
                     {selectedType === 'frutta' ? '🍎 Frutta' : selectedType === 'orto' ? '🥬 Orto' : '🫒 Olivo'}
@@ -502,7 +500,6 @@ export default function App() {
                   <p style={{ color: 'var(--text-secondary)', fontWeight: 'bold' }}>Aggiornato al: {bulletin.date}</p>
                 </div>
 
-                {/* Barra di ricerca per filtrare le piante (es. "Pesco") */}
                 <div className="search-wrapper">
                   <Search className="search-icon" size={24} />
                   <input 
@@ -514,7 +511,6 @@ export default function App() {
                   />
                 </div>
 
-                {/* Nota Introduttiva */}
                 {bulletin.intro && !searchQuery && (
                   <div className="card" style={{ backgroundColor: 'var(--brand-primary-light)', borderLeft: '6px solid var(--brand-accent)' }}>
                     <h3 style={{ color: 'var(--brand-primary)' }}>Previsioni Meteo / Nota Generale</h3>
@@ -522,7 +518,6 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Elenco schede per pianta/coltura */}
                 <div style={{ marginTop: '20px' }}>
                   {getFilteredCategories().length === 0 ? (
                     <div className="empty-state">
@@ -538,7 +533,6 @@ export default function App() {
                           </h2>
                         </div>
 
-                        {/* Dettagli avversità per questa pianta */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                           {cat.details.map((det, detIdx) => (
                             <div key={detIdx} className={`threat-card ${det.alertLevel}`}>
@@ -560,7 +554,6 @@ export default function App() {
                   )}
                 </div>
                 
-                {/* Pulsante PDF Originale */}
                 <div style={{ marginTop: '30px', textAlign: 'center' }}>
                   <a 
                     href={selectedLink?.url} 
@@ -594,10 +587,10 @@ export default function App() {
             </div>
             
             <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
-              Agenda delle attività e dei trattamenti estratti in tempo reale dagli <strong>ultimi 3 bollettini</strong> per ciascuna coltura.
+              Agenda delle attività e dei trattamenti estratti in tempo reale dagli <strong>ultimi 3 bollettini</strong> per ciascuna coltura seguita.
             </p>
 
-            {/* Filtro Tipologia Coltura */}
+            {/* Filtro Tipologia Coltura (Mostra solo le colture seguite) */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', overflowX: 'auto', paddingBottom: '8px' }}>
               <button 
                 className={`btn-icon-only ${calendarFilter === 'tutte' ? 'active' : ''}`}
@@ -606,27 +599,36 @@ export default function App() {
               >
                 Tutte
               </button>
-              <button 
-                className={`btn-icon-only ${calendarFilter === 'frutta' ? 'active' : ''}`}
-                onClick={() => setCalendarFilter('frutta')}
-                style={{ minWidth: '100px', fontSize: '1rem', fontWeight: 'bold' }}
-              >
-                🍎 Frutta
-              </button>
-              <button 
-                className={`btn-icon-only ${calendarFilter === 'orto' ? 'active' : ''}`}
-                onClick={() => setCalendarFilter('orto')}
-                style={{ minWidth: '100px', fontSize: '1rem', fontWeight: 'bold' }}
-              >
-                🥬 Orto
-              </button>
-              <button 
-                className={`btn-icon-only ${calendarFilter === 'olivo' ? 'active' : ''}`}
-                onClick={() => setCalendarFilter('olivo')}
-                style={{ minWidth: '100px', fontSize: '1rem', fontWeight: 'bold' }}
-              >
-                🫒 Olivo
-              </button>
+              
+              {followedCrops.frutta && (
+                <button 
+                  className={`btn-icon-only ${calendarFilter === 'frutta' ? 'active' : ''}`}
+                  onClick={() => setCalendarFilter('frutta')}
+                  style={{ minWidth: '100px', fontSize: '1rem', fontWeight: 'bold' }}
+                >
+                  🍎 Frutta
+                </button>
+              )}
+
+              {followedCrops.orto && (
+                <button 
+                  className={`btn-icon-only ${calendarFilter === 'orto' ? 'active' : ''}`}
+                  onClick={() => setCalendarFilter('orto')}
+                  style={{ minWidth: '100px', fontSize: '1rem', fontWeight: 'bold' }}
+                >
+                  🥬 Orto
+                </button>
+              )}
+
+              {followedCrops.olivo && (
+                <button 
+                  className={`btn-icon-only ${calendarFilter === 'olivo' ? 'active' : ''}`}
+                  onClick={() => setCalendarFilter('olivo')}
+                  style={{ minWidth: '100px', fontSize: '1rem', fontWeight: 'bold' }}
+                >
+                  🫒 Olivo
+                </button>
+              )}
             </div>
 
             {/* Filtro Stato (Da fare vs Completate) */}
@@ -643,7 +645,7 @@ export default function App() {
                 }}
                 onClick={() => setCalendarStatusFilter('da_fare')}
               >
-                Da Fare ({calendarTasks.filter(t => !t.completed).length})
+                Da Fare ({getFilteredCalendarTasks().filter(t => !t.completed).length})
               </button>
               <button 
                 style={{ 
@@ -657,7 +659,7 @@ export default function App() {
                 }}
                 onClick={() => setCalendarStatusFilter('completate')}
               >
-                Fatte ({calendarTasks.filter(t => t.completed).length})
+                Fatte ({getFilteredCalendarTasks().filter(t => t.completed).length})
               </button>
             </div>
 
@@ -689,7 +691,6 @@ export default function App() {
                       alignItems: 'flex-start'
                     }}
                   >
-                    {/* Checkbox interattiva */}
                     <button 
                       onClick={() => toggleTaskCompleted(task.id)}
                       style={{ 
@@ -709,7 +710,6 @@ export default function App() {
                     </button>
 
                     <div style={{ flex: 1 }}>
-                      {/* Badge pianta e Scadenza */}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
                         <span className="badge info" style={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
                           {task.categoryType === 'frutta' ? '🍎' : task.categoryType === 'orto' ? '🥬' : '🫒'} {task.plant}
@@ -727,7 +727,6 @@ export default function App() {
                         </span>
                       </div>
 
-                      {/* Testo dell'istruzione */}
                       <h3 style={{ margin: '8px 0', fontSize: 'calc(1.15rem * var(--text-zoom))', textAlign: 'left', fontWeight: 'bold' }}>
                         Avversità: {task.disease}
                       </h3>
@@ -735,7 +734,6 @@ export default function App() {
                         {task.task}
                       </p>
 
-                      {/* Fonte del bollettino */}
                       <small style={{ color: 'var(--text-secondary)', display: 'block', borderTop: '1px solid var(--border-color)', paddingTop: '6px' }}>
                         Fonte: <strong>{task.bulletinTitle}</strong> del {task.bulletinDate}
                       </small>
@@ -759,37 +757,111 @@ export default function App() {
               Personalizza l'applicazione per renderla più comoda da usare.
             </p>
 
-            {/* Sezione Dimensione Caratteri */}
+            {/* Sezione Dimensione Caratteri (Dropdown / Tendina di scelta) */}
             <div className="card">
               <h2>Dimensione dei testi</h2>
               <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                Seleziona la grandezza del testo più leggibile per te:
+                Scegli la grandezza del testo dal menu a tendina:
+              </p>
+              
+              <div style={{ position: 'relative' }}>
+                <select 
+                  id="zoom-select"
+                  value={zoom}
+                  onChange={(e) => setZoom(parseFloat(e.target.value))}
+                  style={{ 
+                    width: '100%', 
+                    height: '64px', 
+                    fontSize: '1.25rem', 
+                    borderRadius: '16px', 
+                    border: '3px solid var(--border-color)',
+                    padding: '0 16px',
+                    backgroundColor: 'var(--bg-card)',
+                    color: 'var(--text-primary)',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23475569\' stroke-width=\'3\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'/%3e%3c/svg%3e")',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 16px center',
+                    backgroundSize: '24px'
+                  }}
+                >
+                  <option value="1.0">Testo Standard (100%)</option>
+                  <option value="1.25">Testo Grande (125%)</option>
+                  <option value="1.6">Testo Molto Grande (160%)</option>
+                  <option value="2.0">Testo Gigante (200%)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Sezione Coltivazioni Seguite (Scelta colture da seguire) */}
+            <div className="card">
+              <h2>Coltivazioni Seguite</h2>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                Seleziona quali tipi di coltivazione ti interessano. Disattivando una voce, non la vedrai nella Home o nelle Cose da Fare:
               </p>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <button 
-                  className={`btn-large ${zoom === 1.0 ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setZoom(1.0)}
+                  className="btn-large" 
+                  onClick={() => toggleCropFollowed('frutta')}
+                  style={{
+                    backgroundColor: followedCrops.frutta ? 'var(--color-frutta-bg)' : 'var(--bg-card)',
+                    color: followedCrops.frutta ? 'var(--color-frutta)' : 'var(--text-secondary)',
+                    borderColor: followedCrops.frutta ? 'var(--color-frutta)' : 'var(--border-color)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
                 >
-                  Caratteri Standard
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '1.8rem' }}>🍎</span> Frutteto (Mele, Pere, Pesco...)
+                  </span>
+                  <span style={{ fontSize: '1.6rem', fontWeight: 'bold' }}>
+                    {followedCrops.frutta ? '☑️' : '⬛'}
+                  </span>
                 </button>
+
                 <button 
-                  className={`btn-large ${zoom === 1.25 ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setZoom(1.25)}
+                  className="btn-large" 
+                  onClick={() => toggleCropFollowed('orto')}
+                  style={{
+                    backgroundColor: followedCrops.orto ? 'var(--color-orto-bg)' : 'var(--bg-card)',
+                    color: followedCrops.orto ? 'var(--color-orto)' : 'var(--text-secondary)',
+                    borderColor: followedCrops.orto ? 'var(--color-orto)' : 'var(--border-color)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
                 >
-                  Caratteri Grandi (Molto leggibile)
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '1.8rem' }}>🥬</span> Orto (Patate, Pomodoro...)
+                  </span>
+                  <span style={{ fontSize: '1.6rem', fontWeight: 'bold' }}>
+                    {followedCrops.orto ? '☑️' : '⬛'}
+                  </span>
                 </button>
+
                 <button 
-                  className={`btn-large ${zoom === 1.6 ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setZoom(1.6)}
+                  className="btn-large" 
+                  onClick={() => toggleCropFollowed('olivo')}
+                  style={{
+                    backgroundColor: followedCrops.olivo ? 'var(--color-olivo-bg)' : 'var(--bg-card)',
+                    color: followedCrops.olivo ? 'var(--color-olivo)' : 'var(--text-secondary)',
+                    borderColor: followedCrops.olivo ? 'var(--color-olivo)' : 'var(--border-color)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
                 >
-                  Caratteri Molto Grandi (Uso all'aperto)
-                </button>
-                <button 
-                  className={`btn-large ${zoom === 2.0 ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setZoom(2.0)}
-                >
-                  Caratteri Giganti
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '1.8rem' }}>🫒</span> Oliveto (Olivi e difesa olive)
+                  </span>
+                  <span style={{ fontSize: '1.6rem', fontWeight: 'bold' }}>
+                    {followedCrops.olivo ? '☑️' : '⬛'}
+                  </span>
                 </button>
               </div>
             </div>
@@ -804,14 +876,14 @@ export default function App() {
                 Sviluppato per supportare i piccoli produttori agricoli e i pensionati del territorio veneto nella difesa integrata delle colture.
               </p>
               <p style={{ fontSize: '0.95rem', fontWeight: 'bold', color: 'var(--brand-primary)', marginTop: '12px' }}>
-                Versione 1.1.0 (Scadenzario attivo)
+                Versione 1.2.0 (Play Store AAB ready)
               </p>
             </div>
           </div>
         )}
       </main>
 
-      {/* 7. BOTTOM NAVIGATION BAR (GIANT BUTTONS FOR SENIORS) */}
+      {/* 7. BOTTOM NAVIGATION BAR */}
       <nav 
         style={{ 
           position: 'fixed', 
