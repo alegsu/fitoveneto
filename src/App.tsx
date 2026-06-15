@@ -15,6 +15,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { Preferences } from '@capacitor/preferences';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { fetchBulletinLinks, fetchBulletinText } from './services/scraper';
 import type { BulletinLink } from './services/scraper';
 import { parseBulletinText, extractCalendarTasks } from './services/pdfParser';
@@ -261,6 +262,43 @@ export default function App() {
     }
   };
 
+  const triggerTestNotification = async () => {
+    try {
+      const hasPermission = await LocalNotifications.checkPermissions();
+      if (hasPermission.display !== 'granted') {
+        const requestResult = await LocalNotifications.requestPermissions();
+        if (requestResult.display !== 'granted') {
+          alert("Permesso notifiche negato! Per favore, abilita le notifiche nelle impostazioni del telefono per poter eseguire il test.");
+          return;
+        }
+      }
+
+      // Costruiamo il testo in base alle colture seguite
+      const activeCrops: string[] = [];
+      if (followedCrops.frutta) activeCrops.push("Frutteto 🍎");
+      if (followedCrops.orto) activeCrops.push("Orto 🥬");
+      if (followedCrops.olivo) activeCrops.push("Oliveto 🫒");
+
+      const bodyText = activeCrops.length > 0 
+        ? "Stai seguendo: " + activeCrops.join(", ") + ". Riceverai avvisi solo per queste coltivazioni."
+        : "Nessuna coltivazione attiva nelle impostazioni. Non riceverai allarmi.";
+
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            title: "🌾 FitoVeneto - Test Allarmi",
+            body: bodyText,
+            id: 999,
+            schedule: { at: new Date(Date.now() + 1000) } // Attiva dopo 1 secondo
+          }
+        ]
+      });
+    } catch (err) {
+      console.error("Errore invio notifica test:", err);
+      alert("Impossibile inviare la notifica di test: " + (err as Error).message);
+    }
+  };
+
   const toggleTaskCompleted = (taskId: string) => {
     const newSet = new Set(completedTaskIds);
     if (newSet.has(taskId)) {
@@ -430,7 +468,7 @@ export default function App() {
               <button 
                 className="btn-large btn-primary" 
                 onClick={() => setScreen('calendar')}
-                style={{ background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-accent))' }}
+                style={{ backgroundColor: 'var(--brand-primary)', color: '#ffffff', borderColor: 'var(--brand-primary)' }}
               >
                 <Calendar size={36} />
                 <div>
@@ -948,6 +986,28 @@ export default function App() {
                   </span>
                 </button>
               </div>
+            </div>
+
+            {/* Sezione Test Notifiche */}
+            <div className="card">
+              <h2>Verifica Notifiche ed Allarmi</h2>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                Verifica come l'app ti avviserà all'arrivo di nuovi bollettini regionali (invierà una notifica entro 1 secondo):
+              </p>
+              
+              <button 
+                className="btn-large btn-primary"
+                onClick={triggerTestNotification}
+                style={{ 
+                  backgroundColor: 'var(--brand-primary)', 
+                  color: '#ffffff', 
+                  borderColor: 'var(--brand-primary)',
+                  justifyContent: 'center',
+                  fontWeight: 'bold'
+                }}
+              >
+                🔔 Invia Notifica di Test
+              </button>
             </div>
 
             {/* Sezione Informazioni */}

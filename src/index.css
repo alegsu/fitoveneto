@@ -7,20 +7,20 @@
   /* Text Zoom Variable (Controlled by App State: 1.0, 1.25, 1.5, 1.8, 2.0) */
   --text-zoom: 1;
 
-  /* Light Theme Colors (High Contrast) */
-  --bg-primary: #f8fafc;
+  /* Light Theme Colors (High Contrast Green Agricultural) */
+  --bg-primary: #f4f6f4;
   --bg-card: #ffffff;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --border-color: #cbd5e1;
-  --shadow-sm: 0 2px 4px rgba(15, 23, 42, 0.05);
-  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
-  --shadow-lg: 0 10px 25px rgba(15, 23, 42, 0.12);
+  --text-primary: #1b2e1b;
+  --text-secondary: #4a5d4a;
+  --border-color: #ccd5cc;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
 
-  /* Brand Colors (Vibrant) */
-  --brand-primary: #1e3a8a; /* Deep Blue for stability */
-  --brand-primary-light: #eff6ff;
-  --brand-accent: #2563eb;
+  /* Brand Colors (Professional Green Details) */
+  --brand-primary: #2e7d32; /* Professional Forest Green (Material Green 800) */
+  --brand-primary-light: #e8f5e9; /* Light Green background (Material Green 50) */
+  --brand-accent: #4caf50; /* Accent green (Material Green 500) */
   
   /* Category Colors */
   --color-frutta: #ea580c; /* Bright Orange */
@@ -31,19 +31,19 @@
   --color-olivo-bg: #fefce8;
 
   /* Threat Levels */
-  --danger-color: #dc2626; /* Deep Red */
+  --danger-color: #d32f2f; /* Material Red 700 */
   --danger-bg: #fef2f2;
   --danger-border: #fca5a5;
   
-  --warning-color: #d97706; /* Amber */
+  --warning-color: #f57c00; /* Material Orange 700 */
   --warning-bg: #fffbeb;
   --warning-border: #fde68a;
   
-  --info-color: #2563eb; /* Blue */
+  --info-color: #1976d2; /* Material Blue 700 */
   --info-bg: #f0f9ff;
   --info-border: #bae6fd;
   
-  --success-color: #16a34a; /* Green */
+  --success-color: #388e3c; /* Material Green 700 */
   --success-bg: #f0fdf4;
   --success-border: #bbf7d0;
 
@@ -57,30 +57,30 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Dark Mode Overrides (High Contrast Dark) via class */
+/* Dark Mode Overrides (AMOLED Pure Black & Green Accent) via class */
 .dark-theme {
-  --bg-primary: #0f172a;
-  --bg-card: #1e293b;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --border-color: #334155;
+  --bg-primary: #000000;
+  --bg-card: #121212;
+  --text-primary: #e8f5e9;
+  --text-secondary: #a5d6a7;
+  --border-color: #2e3b2e;
   
-  --brand-primary: #3b82f6;
-  --brand-primary-light: #1e3a8a;
-  --brand-accent: #60a5fa;
+  --brand-primary: #4caf50; /* Accent green for dark theme */
+  --brand-primary-light: #1b5e20; /* Dark forest green for highlight sections */
+  --brand-accent: #81c784;
 
-  --color-frutta-bg: #2c1a10;
-  --color-orto-bg: #0f2d18;
-  --color-olivo-bg: #2d2a10;
+  --color-frutta-bg: #211000;
+  --color-orto-bg: #002100;
+  --color-olivo-bg: #1c1a00;
 
-  --danger-bg: #450a0a;
-  --danger-border: #991b1b;
-  --warning-bg: #451a03;
-  --warning-border: #92400e;
-  --info-bg: #0c2340;
-  --info-border: #075985;
-  --success-bg: #064e3b;
-  --success-border: #065f46;
+  --danger-bg: #210000;
+  --danger-border: #b71c1c;
+  --warning-bg: #211000;
+  --warning-border: #f57f17;
+  --info-bg: #001021;
+  --info-border: #0d47a1;
+  --success-bg: #002100;
+  --success-border: #1b5e20;
 }
 
 body {
@@ -104,7 +104,7 @@ body {
 
 /* DYNAMIC TYPOGRAPHY BASED ON ZOOM VARIABLE */
 h1 {
-  font-size: calc(2.2rem * var(--text-zoom));
+  font-size: calc(1.8rem * var(--text-zoom));
   font-weight: 800;
   line-height: 1.15;
   margin: 0 0 10px 0;
@@ -112,7 +112,7 @@ h1 {
 }
 
 h2 {
-  font-size: calc(1.6rem * var(--text-zoom));
+  font-size: calc(1.4rem * var(--text-zoom));
   font-weight: 700;
   line-height: 1.2;
   margin: 0 0 8px 0;
@@ -120,19 +120,19 @@ h2 {
 }
 
 h3 {
-  font-size: calc(1.3rem * var(--text-zoom));
+  font-size: calc(1.15rem * var(--text-zoom));
   font-weight: 600;
   line-height: 1.25;
   margin: 0 0 6px 0;
 }
 
 p, span, li, button, input {
-  font-size: calc(1.1rem * var(--text-zoom));
+  font-size: calc(0.95rem * var(--text-zoom));
   line-height: 1.5;
 }
 
 small {
-  font-size: calc(0.9rem * var(--text-zoom));
+  font-size: calc(0.8rem * var(--text-zoom));
 }
 
 /* BUTTONS SYSTEM (GIANT AND VISUALLY CLEAR) */
@@ -145,23 +145,23 @@ small {
   min-height: 58px;
   padding: 12px 20px;
   border-radius: 14px;
-  border: 3px solid transparent;
+  border: 2px solid var(--border-color);
+  background-color: var(--bg-card);
+  color: var(--text-primary);
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: var(--shadow-md);
   box-sizing: border-box;
   text-align: left;
 }
 
 .btn-large:hover, .btn-large:focus {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
+  border-color: var(--brand-primary);
   outline: none;
 }
 
 .btn-large:active {
-  transform: translateY(1px);
+  background-color: var(--brand-primary-light);
 }
 
 .btn-frutta {
