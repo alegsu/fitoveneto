@@ -57,32 +57,30 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Dark Mode Overrides (High Contrast Dark) */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-primary: #0f172a;
-    --bg-card: #1e293b;
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --border-color: #334155;
-    
-    --brand-primary: #3b82f6;
-    --brand-primary-light: #1e3a8a;
-    --brand-accent: #60a5fa;
+/* Dark Mode Overrides (High Contrast Dark) via class */
+.dark-theme {
+  --bg-primary: #0f172a;
+  --bg-card: #1e293b;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --border-color: #334155;
+  
+  --brand-primary: #3b82f6;
+  --brand-primary-light: #1e3a8a;
+  --brand-accent: #60a5fa;
 
-    --color-frutta-bg: #2c1a10;
-    --color-orto-bg: #0f2d18;
-    --color-olivo-bg: #2d2a10;
+  --color-frutta-bg: #2c1a10;
+  --color-orto-bg: #0f2d18;
+  --color-olivo-bg: #2d2a10;
 
-    --danger-bg: #450a0a;
-    --danger-border: #991b1b;
-    --warning-bg: #451a03;
-    --warning-border: #92400e;
-    --info-bg: #0c2340;
-    --info-border: #075985;
-    --success-bg: #064e3b;
-    --success-border: #065f46;
-  }
+  --danger-bg: #450a0a;
+  --danger-border: #991b1b;
+  --warning-bg: #451a03;
+  --warning-border: #92400e;
+  --info-bg: #0c2340;
+  --info-border: #075985;
+  --success-bg: #064e3b;
+  --success-border: #065f46;
 }
 
 body {
@@ -144,9 +142,9 @@ small {
   justify-content: center;
   gap: 16px;
   width: 100%;
-  min-height: 72px; /* Extra height for seniors */
-  padding: 16px 24px;
-  border-radius: 16px;
+  min-height: 58px;
+  padding: 12px 20px;
+  border-radius: 14px;
   border: 3px solid transparent;
   font-weight: 700;
   cursor: pointer;
@@ -218,9 +216,9 @@ small {
 /* CARDS (HIGH READABILITY) */
 .card {
   background-color: var(--bg-card);
-  border-radius: 20px;
-  padding: 24px;
-  margin-bottom: 20px;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
   border: 2px solid var(--border-color);
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.2s ease;
@@ -232,10 +230,10 @@ small {
 
 /* THREAT DETAIL CARDS */
 .threat-card {
-  border-left-width: 10px; /* Big color stripe on the left */
-  padding: 20px;
-  border-radius: 16px;
-  margin-bottom: 16px;
+  border-left-width: 8px; /* Color stripe on the left */
+  padding: 14px;
+  border-radius: 12px;
+  margin-bottom: 12px;
   border-top: 1px solid var(--border-color);
   border-right: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);

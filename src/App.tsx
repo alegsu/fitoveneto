@@ -14,6 +14,7 @@ import {
   Info,
   RefreshCw
 } from 'lucide-react';
+import { Preferences } from '@capacitor/preferences';
 import { fetchBulletinLinks, fetchBulletinText } from './services/scraper';
 import type { BulletinLink } from './services/scraper';
 import { parseBulletinText, extractCalendarTasks } from './services/pdfParser';
@@ -26,6 +27,15 @@ export default function App() {
   const [zoom, setZoom] = useState<number>(() => {
     const cached = localStorage.getItem('app_zoom');
     return cached ? parseFloat(cached) : 1.25; // Default 125% per anziani
+  });
+
+  // Stato del tema (Chiaro/Scuro)
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const cached = localStorage.getItem('app_theme');
+    if (cached === 'light' || cached === 'dark') return cached;
+    // Fallback automatico sul tema di sistema
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return systemPrefersDark ? 'dark' : 'light';
   });
 
   // Coltivazioni seguite (Personalizzazione)
@@ -63,9 +73,25 @@ export default function App() {
     localStorage.setItem('app_zoom', zoom.toString());
   }, [zoom]);
 
+  // Gestione ed applicazione del tema
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark-theme');
+    } else {
+      document.documentElement.classList.remove('dark-theme');
+    }
+    localStorage.setItem('app_theme', theme);
+  }, [theme]);
+
   // Salva preferenze coltivazioni seguite e rigenera scadenziario
   useEffect(() => {
     localStorage.setItem('followed_crops', JSON.stringify(followedCrops));
+    // Sincronizza con SharedPreferences nativo per il background checker
+    Preferences.set({
+      key: 'followed_crops',
+      value: JSON.stringify(followedCrops)
+    }).catch(err => console.warn("Errore durante il salvataggio delle preferenze su Capacitor Preferences:", err));
+
     if (links.length > 0) {
       buildCalendar(links);
     }
@@ -84,6 +110,15 @@ export default function App() {
       setLinks(fetchedLinks);
       localStorage.setItem('cached_bulletin_links', JSON.stringify(fetchedLinks));
       setOfflineLinks(false);
+
+      // Aggiorna l'indice dei bollettini visti per evitare notifiche duplicate in background
+      const latestFrutta = fetchedLinks.find(l => l.type === 'frutta')?.number || 0;
+      const latestOrto = fetchedLinks.find(l => l.type === 'orto')?.number || 0;
+      const latestOlivo = fetchedLinks.find(l => l.type === 'olivo')?.number || 0;
+      Preferences.set({
+        key: 'last_seen_bulletins',
+        value: JSON.stringify({ frutta: latestFrutta, orto: latestOrto, olivo: latestOlivo })
+      }).catch(err => console.warn("Errore salvataggio last_seen_bulletins:", err));
       
       // Carica i compiti del calendario dopo che i link sono disponibili
       await buildCalendar(fetchedLinks);
@@ -793,6 +828,55 @@ export default function App() {
                   <option value="1.6">Testo Molto Grande (160%)</option>
                   <option value="2.0">Testo Gigante (200%)</option>
                 </select>
+              </div>
+            </div>
+
+            {/* Sezione Scelta Tema (Chiaro / Scuro) */}
+            <div className="card">
+              <h2>Tema dell'applicazione</h2>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                Scegli se usare lo sfondo chiaro o scuro:
+              </p>
+              
+              <div style={{ display: 'flex', gap: '16px' }}>
+                <button 
+                  onClick={() => setTheme('light')}
+                  style={{
+                    flex: 1,
+                    height: '56px',
+                    borderRadius: '12px',
+                    border: theme === 'light' ? '3px solid var(--brand-accent)' : '2px solid var(--border-color)',
+                    backgroundColor: theme === 'light' ? 'var(--brand-primary-light)' : 'var(--bg-card)',
+                    color: theme === 'light' ? 'var(--brand-primary)' : 'var(--text-primary)',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  ☀️ Chiaro
+                </button>
+                <button 
+                  onClick={() => setTheme('dark')}
+                  style={{
+                    flex: 1,
+                    height: '56px',
+                    borderRadius: '12px',
+                    border: theme === 'dark' ? '3px solid var(--brand-accent)' : '2px solid var(--border-color)',
+                    backgroundColor: theme === 'dark' ? 'var(--brand-primary-light)' : 'var(--bg-card)',
+                    color: theme === 'dark' ? 'var(--brand-primary)' : 'var(--text-primary)',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  🌙 Scuro
+                </button>
               </div>
             </div>
 

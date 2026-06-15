@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "it.veneto.fitosanitario"
+    namespace = "fitosanitari.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "it.veneto.fitosanitario"
+        applicationId "fitosanitari.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -49,6 +49,7 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+    implementation "androidx.work:work-runtime:2.9.0"
 }
 
 apply from: 'capacitor.build.gradle'

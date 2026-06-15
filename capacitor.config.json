@@ -1,5 +1,5 @@
 {
-  "appId": "it.veneto.fitosanitario",
+  "appId": "fitosanitari.app",
   "appName": "Bollettini Veneto",
   "webDir": "dist",
   "plugins": {
