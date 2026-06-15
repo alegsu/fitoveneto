@@ -288,8 +288,7 @@ export default function App() {
           {
             title: "🌾 FitoVeneto - Test Allarmi",
             body: bodyText,
-            id: 999,
-            schedule: { at: new Date(Date.now() + 1000) } // Attiva dopo 1 secondo
+            id: 999
           }
         ]
       });
@@ -757,34 +756,16 @@ export default function App() {
                     key={task.id} 
                     className={`card ${task.alertLevel}`} 
                     style={{ 
-                      borderLeft: `10px solid var(--${task.alertLevel === 'danger' ? 'danger' : task.alertLevel === 'warning' ? 'warning' : 'success'}-color)`,
-                      padding: '20px',
+                      borderLeft: `8px solid var(--${task.alertLevel === 'danger' ? 'danger' : task.alertLevel === 'warning' ? 'warning' : 'success'}-color)`,
+                      padding: '14px',
                       display: 'flex',
-                      gap: '16px',
-                      alignItems: 'flex-start'
+                      flexDirection: 'column',
+                      gap: '10px'
                     }}
                   >
-                    <button 
-                      onClick={() => toggleTaskCompleted(task.id)}
-                      style={{ 
-                        background: 'none', 
-                        border: 'none', 
-                        cursor: 'pointer', 
-                        padding: 0,
-                        marginTop: '4px',
-                        color: task.completed ? 'var(--success-color)' : 'var(--text-secondary)'
-                      }}
-                      title={task.completed ? "Segna come da fare" : "Segna come completato"}
-                    >
-                      {task.completed 
-                        ? <CheckSquare size={36} style={{ color: 'var(--success-color)' }} />
-                        : <Square size={36} />
-                      }
-                    </button>
-
-                    <div style={{ flex: 1 }}>
+                    <div style={{ width: '100%' }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
-                        <span className="badge info" style={{ fontWeight: 'bold', textTransform: 'uppercase' }}>
+                        <span className="badge info" style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.8rem' }}>
                           {task.categoryType === 'frutta' ? '🍎' : task.categoryType === 'orto' ? '🥬' : '🫒'} {task.plant}
                         </span>
                         
@@ -793,17 +774,18 @@ export default function App() {
                           style={{ 
                             backgroundColor: 'transparent', 
                             border: `2px solid var(--${task.alertLevel === 'danger' ? 'danger' : task.alertLevel === 'warning' ? 'warning' : 'success'}-color)`,
-                            color: `var(--${task.alertLevel === 'danger' ? 'danger' : task.alertLevel === 'warning' ? 'warning' : 'success'}-color)`
+                            color: `var(--${task.alertLevel === 'danger' ? 'danger' : task.alertLevel === 'warning' ? 'warning' : 'success'}-color)`,
+                            fontSize: '0.8rem'
                           }}
                         >
                           🕒 {task.deadline}
                         </span>
                       </div>
 
-                      <h3 style={{ margin: '8px 0', fontSize: 'calc(1.15rem * var(--text-zoom))', textAlign: 'left', fontWeight: 'bold' }}>
+                      <h3 style={{ margin: '6px 0', fontSize: 'calc(1.05rem * var(--text-zoom))', textAlign: 'left', fontWeight: 'bold' }}>
                         Avversità: {task.disease}
                       </h3>
-                      <p style={{ fontSize: 'calc(1.05rem * var(--text-zoom))', color: 'var(--text-primary)', textAlign: 'left', marginBottom: '12px' }}>
+                      <p style={{ fontSize: 'calc(0.95rem * var(--text-zoom))', color: 'var(--text-primary)', textAlign: 'left', marginBottom: '10px', lineHeight: '1.4' }}>
                         {task.task}
                       </p>
 
@@ -811,6 +793,33 @@ export default function App() {
                         Fonte: <strong>{task.bulletinTitle}</strong> del {task.bulletinDate}
                       </small>
                     </div>
+
+                    <button 
+                      onClick={() => toggleTaskCompleted(task.id)}
+                      style={{ 
+                        width: '100%',
+                        height: '44px',
+                        borderRadius: '10px',
+                        backgroundColor: task.completed ? 'var(--success-bg)' : 'var(--bg-primary)',
+                        color: task.completed ? 'var(--success-color)' : 'var(--text-primary)',
+                        border: `2px solid ${task.completed ? 'var(--success-border)' : 'var(--border-color)'}`,
+                        cursor: 'pointer',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        fontWeight: 'bold',
+                        fontSize: '0.9rem'
+                      }}
+                      title={task.completed ? "Segna come da fare" : "Segna come completato"}
+                    >
+                      {task.completed 
+                        ? <CheckSquare size={20} style={{ color: 'var(--success-color)' }} />
+                        : <Square size={20} />
+                      }
+                      <span>{task.completed ? "Fatta (Tocca per riattivare)" : "Segna come Fatta"}</span>
+                    </button>
                   </div>
                 ))}
               </div>
