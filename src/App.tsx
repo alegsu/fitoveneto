@@ -20,8 +20,9 @@ import { fetchBulletinLinks, fetchBulletinText } from './services/scraper';
 import type { BulletinLink } from './services/scraper';
 import { parseBulletinText, extractCalendarTasks } from './services/pdfParser';
 import type { BulletinContent, CategorySection, CalendarTask } from './services/pdfParser';
+import RegistroTrattamenti from './components/RegistroTrattamenti';
 
-type Screen = 'home' | 'list' | 'detail' | 'calendar' | 'settings';
+type Screen = 'home' | 'list' | 'detail' | 'calendar' | 'settings' | 'registro';
 
 export default function App() {
   // Accessibilità ed impostazioni
@@ -475,6 +476,17 @@ export default function App() {
                   <small style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Scadenziario compiti da fare</small>
                 </div>
               </button>
+
+              <button 
+                className="btn-large btn-secondary" 
+                onClick={() => setScreen('registro')}
+              >
+                <CheckSquare size={36} style={{ color: 'var(--brand-accent)' }} />
+                <div>
+                  <h3 style={{ margin: 0 }}>QUADERNO CAMPAGNA</h3>
+                  <small style={{ color: 'var(--text-secondary)' }}>Registro trattamenti a norma</small>
+                </div>
+              </button>
             </div>
 
             <div className="card" style={{ marginTop: '30px', textAlign: 'center', backgroundColor: 'var(--brand-primary-light)', borderColor: 'var(--brand-accent)' }}>
@@ -640,6 +652,14 @@ export default function App() {
               </div>
             ) : null}
           </div>
+        )}
+
+        {/* 4b. SCHERMATA: REGISTRO TRATTAMENTI */}
+        {screen === 'registro' && (
+          <RegistroTrattamenti 
+            onBack={() => setScreen('home')} 
+            followedCrops={followedCrops} 
+          />
         )}
 
         {/* 5. SCHERMATA: CALENDARIO / SCADENZIARIO COSE DA FARE */}

@@ -11,9 +11,13 @@
   },
   "dependencies": {
     "@capacitor/core": "^8.4.0",
+    "@capacitor/filesystem": "^8.1.2",
     "@capacitor/local-notifications": "^8.2.0",
     "@capacitor/preferences": "^8.0.1",
+    "@capacitor/share": "^8.0.1",
+    "@types/papaparse": "^5.5.2",
     "lucide-react": "^1.17.0",
+    "papaparse": "^5.5.3",
     "pdfjs-dist": "^6.0.227",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
