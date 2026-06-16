@@ -16,25 +16,36 @@ const DB_FILENAME = 'fitofarmaci_db.json';
 export async function syncFitofarmaci(): Promise<number> {
   try {
     // 1. Get the dataset metadata from the Italian Open Data portal (CKAN API)
-    // Using dati.gov.it as it often mirrors salute.gov.it with better CORS/uptime
+    // We try directly without proxy because Capacitor bypasses CORS natively and proxies get blocked by WAF
     const apiUrl = 'https://dati.gov.it/api/3/action/package_show?id=fitosanitari';
     
-    // We use a CORS proxy as a fallback for the web version, but CapacitorHttp is native
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`;
-    
-    const response = await CapacitorHttp.request({
-      method: 'GET',
-      url: proxyUrl,
-      headers: { 'Accept': 'application/json' }
-    });
-
-    if (!response.data || !response.data.contents) {
-      throw new Error("Impossibile contattare il portale Open Data.");
+    let ckanData;
+    try {
+      const response = await CapacitorHttp.request({
+        method: 'GET',
+        url: apiUrl,
+        headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0 Capacitor/FitoVeneto' }
+      });
+      ckanData = response.data;
+      if (typeof ckanData === 'string') {
+        ckanData = JSON.parse(ckanData);
+      }
+    } catch (e) {
+      console.error("Direct API failed, trying salute.gov.it", e);
+      const fallbackApiUrl = 'https://www.dati.salute.gov.it/dati/api/3/action/package_show?id=fitosanitari';
+      const fbResponse = await CapacitorHttp.request({
+        method: 'GET',
+        url: fallbackApiUrl,
+        headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0 Capacitor/FitoVeneto' }
+      });
+      ckanData = fbResponse.data;
+      if (typeof ckanData === 'string') {
+        ckanData = JSON.parse(ckanData);
+      }
     }
 
-    const ckanData = JSON.parse(response.data.contents);
-    if (!ckanData.success) {
-      throw new Error("Dataset Ministero non trovato.");
+    if (!ckanData || !ckanData.success) {
+      throw new Error("Dataset Ministero non trovato o bloccato dal firewall.");
     }
 
     // 2. Find the CSV resource
@@ -45,14 +56,14 @@ export async function syncFitofarmaci(): Promise<number> {
       throw new Error("Formato CSV non disponibile sul portale.");
     }
 
-    // 3. Download the CSV content
-    const csvProxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(csvResource.url)}`;
+    // 3. Download the CSV content directly
     const csvResponse = await CapacitorHttp.request({
       method: 'GET',
-      url: csvProxyUrl
+      url: csvResource.url,
+      headers: { 'User-Agent': 'Mozilla/5.0 Capacitor/FitoVeneto' }
     });
 
-    const csvText = JSON.parse(csvResponse.data).contents;
+    const csvText = csvResponse.data;
 
     // 4. Parse CSV with PapaParse
     const parsed = Papa.parse(csvText, {
