@@ -285,8 +285,18 @@ export default function RegistroTrattamenti({ onBack, followedCrops }: Props) {
             )}
             
             {dbCount === 0 && !isSyncing && (
-              <div style={{ marginTop: '8px', fontSize: '0.85rem', color: 'var(--danger-color)' }}>
-                Devi prima sincronizzare il database per usare la ricerca.
+              <div style={{ marginTop: '12px', padding: '12px', backgroundColor: 'var(--danger-color)', color: 'white', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <strong>Database Vuoto!</strong><br />
+                  <small>Devi sincronizzare i dati del Ministero per cercare i prodotti.</small>
+                </div>
+                <button 
+                  onClick={handleSyncDB}
+                  className="btn-icon-only"
+                  style={{ backgroundColor: 'white', color: 'var(--danger-color)', padding: '8px 16px', borderRadius: '24px', fontWeight: 'bold' }}
+                >
+                  Sincronizza Ora
+                </button>
               </div>
             )}
           </div>
