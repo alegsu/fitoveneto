@@ -1,0 +1,72 @@
+[
+    {
+      "numero_registrazione": "12345",
+      "prodotto": "Poltiglia Bordolese 20 WG",
+      "sostanza_attiva": "Rame (Solfato tribasico)",
+      "impresa": "AgroPharma SpA",
+      "scadenza": "31/12/2025"
+    },
+    {
+      "numero_registrazione": "67890",
+      "prodotto": "Zolfo Ventilato 99",
+      "sostanza_attiva": "Zolfo",
+      "impresa": "BioChem Srl",
+      "scadenza": "31/12/2026"
+    },
+    {
+      "numero_registrazione": "54321",
+      "prodotto": "Olio Bianco Estivo",
+      "sostanza_attiva": "Olio minerale",
+      "impresa": "NaturaFit",
+      "scadenza": "15/06/2025"
+    },
+    {
+      "numero_registrazione": "11223",
+      "prodotto": "Spinosad SC",
+      "sostanza_attiva": "Spinosad",
+      "impresa": "EcoProtect",
+      "scadenza": "30/11/2024"
+    },
+    {
+      "numero_registrazione": "44556",
+      "prodotto": "Bacillus Thuringiensis Kurstaki",
+      "sostanza_attiva": "Bacillus thuringiensis",
+      "impresa": "BioAgri",
+      "scadenza": "01/01/2028"
+    },
+    {
+      "numero_registrazione": "77889",
+      "prodotto": "Rame Ossicloruro 50",
+      "sostanza_attiva": "Rame (Ossicloruro)",
+      "impresa": "FitoItalia",
+      "scadenza": "31/12/2030"
+    },
+    {
+      "numero_registrazione": "99000",
+      "prodotto": "Piretro Naturale Extract",
+      "sostanza_attiva": "Piretrine",
+      "impresa": "NaturalCrop",
+      "scadenza": "15/05/2027"
+    },
+    {
+      "numero_registrazione": "11111",
+      "prodotto": "Glyphosate 360",
+      "sostanza_attiva": "Glifosate",
+      "impresa": "ChemAgro",
+      "scadenza": "31/12/2026"
+    },
+    {
+      "numero_registrazione": "22222",
+      "prodotto": "Abamectina 18 EC",
+      "sostanza_attiva": "Abamectina",
+      "impresa": "PestControl",
+      "scadenza": "01/06/2025"
+    },
+    {
+      "numero_registrazione": "33333",
+      "prodotto": "Tebuconazolo 250 EW",
+      "sostanza_attiva": "Tebuconazolo",
+      "impresa": "FungiStop",
+      "scadenza": "15/09/2028"
+    }
+  ]

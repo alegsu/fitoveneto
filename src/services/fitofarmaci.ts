@@ -1,6 +1,5 @@
 import { CapacitorHttp } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
-import Papa from 'papaparse';
 
 export interface Fitofarmaco {
   numero_registrazione: string;
@@ -12,93 +11,36 @@ export interface Fitofarmaco {
 
 const DB_FILENAME = 'fitofarmaci_db.json';
 
-// Fetch the actual dataset from Ministero della Salute
+// Fetch the dataset from GitHub (since Ministero actively blocks native app connections via WAF)
 export async function syncFitofarmaci(): Promise<number> {
   try {
-    // 1. Get the dataset metadata from the Italian Open Data portal (CKAN API)
-    // We try directly without proxy because Capacitor bypasses CORS natively and proxies get blocked by WAF
-    const apiUrl = 'https://dati.gov.it/api/3/action/package_show?id=fitosanitari';
+    const datasetUrl = 'https://raw.githubusercontent.com/alegsu/fitoveneto/main/public/fitofarmaci_dataset.json';
     
-    let ckanData;
-    try {
-      const response = await CapacitorHttp.request({
-        method: 'GET',
-        url: apiUrl,
-        headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0 Capacitor/FitoVeneto' }
-      });
-      ckanData = response.data;
-      if (typeof ckanData === 'string') {
-        ckanData = JSON.parse(ckanData);
-      }
-    } catch (e) {
-      console.error("Direct API failed, trying salute.gov.it", e);
-      const fallbackApiUrl = 'https://www.dati.salute.gov.it/dati/api/3/action/package_show?id=fitosanitari';
-      const fbResponse = await CapacitorHttp.request({
-        method: 'GET',
-        url: fallbackApiUrl,
-        headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0 Capacitor/FitoVeneto' }
-      });
-      ckanData = fbResponse.data;
-      if (typeof ckanData === 'string') {
-        ckanData = JSON.parse(ckanData);
-      }
-    }
-
-    if (!ckanData || !ckanData.success) {
-      throw new Error("Dataset Ministero non trovato o bloccato dal firewall.");
-    }
-
-    // 2. Find the CSV resource
-    const resources = ckanData.result.resources;
-    const csvResource = resources.find((r: any) => r.format.toLowerCase() === 'csv' || r.url.endsWith('.csv'));
-    
-    if (!csvResource) {
-      throw new Error("Formato CSV non disponibile sul portale.");
-    }
-
-    // 3. Download the CSV content directly
-    const csvResponse = await CapacitorHttp.request({
+    const response = await CapacitorHttp.request({
       method: 'GET',
-      url: csvResource.url,
-      headers: { 'User-Agent': 'Mozilla/5.0 Capacitor/FitoVeneto' }
+      url: datasetUrl,
+      headers: { 'Accept': 'application/json' }
     });
 
-    const csvText = csvResponse.data;
+    if (!response.data) {
+      throw new Error("Impossibile scaricare il database remoto.");
+    }
 
-    // 4. Parse CSV with PapaParse
-    const parsed = Papa.parse(csvText, {
-      header: true,
-      skipEmptyLines: true,
-      delimiter: ';' // Ministero usually uses semicolon
-    });
-
-    // Handle case where delimiter might be comma
-    let dataRows = parsed.data as any[];
-    if (dataRows.length > 0 && !dataRows[0]['Numero Registrazione'] && dataRows[0]['Numero Registrazione,Prodotto']) {
-      // Re-parse with comma
-      const parsedComma = Papa.parse(csvText, { header: true, skipEmptyLines: true, delimiter: ',' });
-      dataRows = parsedComma.data as any[];
+    let dataRows = response.data;
+    if (typeof dataRows === 'string') {
+      dataRows = JSON.parse(dataRows);
     }
 
     // 5. Map to our interface to save space
-    const db: Fitofarmaco[] = dataRows.map(row => {
-      // The exact column names depend on the Ministero's current CSV structure.
-      // Usually they are: "Numero Registrazione", "Prodotto", "Sostanza Attiva", "Impresa", "Scadenza"
-      // We will do a fuzzy match on the keys just in case they change slightly
-      const keys = Object.keys(row);
-      const getVal = (possibleNames: string[]) => {
-        const key = keys.find(k => possibleNames.some(p => k.toLowerCase().includes(p)));
-        return key ? row[key] : '';
-      };
-
+    const db: Fitofarmaco[] = dataRows.map((row: any) => {
       return {
-        numero_registrazione: getVal(['numero', 'registrazione', 'reg']),
-        prodotto: getVal(['prodotto', 'denominazione', 'nome']),
-        sostanza_attiva: getVal(['sostanza', 'attiva', 'principio']),
-        impresa: getVal(['impresa', 'titolare', 'azienda']),
-        scadenza: getVal(['scadenza', 'data', 'validita'])
+        numero_registrazione: row.numero_registrazione || '',
+        prodotto: row.prodotto || '',
+        sostanza_attiva: row.sostanza_attiva || '',
+        impresa: row.impresa || '',
+        scadenza: row.scadenza || ''
       };
-    }).filter(f => f.numero_registrazione && f.prodotto); // Keep only valid rows
+    }).filter((f: Fitofarmaco) => f.numero_registrazione && f.prodotto); // Keep only valid rows
 
     // 6. Save to local filesystem for offline use
     await Filesystem.writeFile({
