@@ -50,7 +50,7 @@ export default function RegistroTrattamenti({ onBack, followedCrops }: Props) {
 
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (searchQuery.length >= 3) {
+      if (searchQuery.length >= 2) {
         setIsSearching(true);
         const results = await searchFitofarmaco(searchQuery);
         setSearchResults(results);
