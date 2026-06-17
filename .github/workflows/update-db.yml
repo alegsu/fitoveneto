@@ -1,0 +1,37 @@
+name: Aggiorna Database Ministero
+
+on:
+  schedule:
+    # Esegui ogni sabato alle 02:00 UTC
+    - cron: '0 2 * * 6'
+  workflow_dispatch: # Permette di avviarlo manualmente
+
+jobs:
+  update-dataset:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Scraper
+        run: node scripts/sync-ministero.js
+
+      - name: Commit and Push
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add public/fitofarmaci_dataset.json
+          git commit -m "chore: aggiornamento automatico database ministero [skip ci]" || echo "Nessun aggiornamento disponibile"
+          git push
