@@ -1066,70 +1066,81 @@ export default function App() {
           width: '100%',
           maxWidth: '600px',
           height: '80px', 
-          backgroundColor: 'var(--bg-card)', 
-          borderTop: '3px solid var(--border-color)',
+          backgroundColor: 'rgba(22, 24, 29, 0.95)', 
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          borderTop: '1px solid var(--border-color)',
           display: 'flex',
           justifyContent: 'space-around',
           alignItems: 'center',
+          padding: '0 8px',
           zIndex: 1000,
-          boxShadow: '0 -4px 10px rgba(0,0,0,0.06)'
         }}
       >
         <button 
           onClick={() => setScreen('home')}
           style={{ 
-            background: 'none', 
+            background: screen === 'home' || screen === 'list' || screen === 'detail' ? 'rgba(52, 211, 153, 0.15)' : 'transparent', 
             border: 'none', 
+            borderRadius: '16px',
             display: 'flex', 
             flexDirection: 'column', 
             alignItems: 'center', 
             justifyContent: 'center',
-            color: screen === 'home' || screen === 'list' || screen === 'detail' ? 'var(--brand-accent)' : 'var(--text-secondary)',
+            color: screen === 'home' || screen === 'list' || screen === 'detail' ? 'var(--brand-primary)' : 'var(--text-secondary)',
             cursor: 'pointer',
             flex: 1,
-            height: '100%'
+            height: '64px',
+            margin: '0 4px',
+            transition: 'all 0.2s ease'
           }}
         >
-          <Home size={28} />
-          <span style={{ fontSize: '0.85rem', fontWeight: 'bold', marginTop: '4px' }}>Home</span>
+          <Home size={24} />
+          <span style={{ fontSize: '0.75rem', fontWeight: '600', marginTop: '6px' }}>Home</span>
         </button>
 
         <button 
           onClick={() => setScreen('calendar')}
           style={{ 
-            background: 'none', 
+            background: screen === 'calendar' ? 'rgba(52, 211, 153, 0.15)' : 'transparent', 
             border: 'none', 
+            borderRadius: '16px',
             display: 'flex', 
             flexDirection: 'column', 
             alignItems: 'center', 
             justifyContent: 'center',
-            color: screen === 'calendar' ? 'var(--brand-accent)' : 'var(--text-secondary)',
+            color: screen === 'calendar' ? 'var(--brand-primary)' : 'var(--text-secondary)',
             cursor: 'pointer',
             flex: 1,
-            height: '100%'
+            height: '64px',
+            margin: '0 4px',
+            transition: 'all 0.2s ease'
           }}
         >
-          <Calendar size={28} />
-          <span style={{ fontSize: '0.85rem', fontWeight: 'bold', marginTop: '4px' }}>Cose da Fare</span>
+          <Calendar size={24} />
+          <span style={{ fontSize: '0.75rem', fontWeight: '600', marginTop: '6px' }}>Agenda</span>
         </button>
 
         <button 
           onClick={() => setScreen('settings')}
           style={{ 
-            background: 'none', 
+            background: screen === 'settings' ? 'rgba(52, 211, 153, 0.15)' : 'transparent', 
             border: 'none', 
+            borderRadius: '16px',
             display: 'flex', 
             flexDirection: 'column', 
             alignItems: 'center', 
             justifyContent: 'center',
-            color: screen === 'settings' ? 'var(--brand-accent)' : 'var(--text-secondary)',
+            color: screen === 'settings' ? 'var(--brand-primary)' : 'var(--text-secondary)',
             cursor: 'pointer',
             flex: 1,
-            height: '100%'
+            height: '64px',
+            margin: '0 4px',
+            transition: 'all 0.2s ease'
           }}
         >
-          <Settings size={28} />
-          <span style={{ fontSize: '0.85rem', fontWeight: 'bold', marginTop: '4px' }}>Opzioni</span>
+          <Settings size={24} />
+          <span style={{ fontSize: '0.75rem', fontWeight: '600', marginTop: '6px' }}>Opzioni</span>
         </button>
       </nav>
     </>
